@@ -1,5 +1,7 @@
 import yaml
 import copy
+import subprocess
+import shlex
 
 import TexSoup
 import TexSoup.utils
@@ -27,16 +29,20 @@ life & common
 
 \begin{codesnip}
     % i: 3
-    \variable{i} = \variable{i} + 1
+    python -c 'print(\variable{i} * \variable{i} + 1)'
 \end{codesnip}
 
 \begin{codesnip}
-    \variable{x} = \variable{x}^2
+    echo \variable{y} = \variable{x}^2
 \end{codesnip}
 
 \begin{codesnip}
     % file: try_texsoup.py
     git diff \variable{file}
+\end{codesnip}
+
+\begin{codesnip}
+    mpl_qt
 \end{codesnip}
 
 \end{document}
@@ -84,13 +90,34 @@ print([c for c in cs0])
 for codesnip in find_codesnips(soup):
     comments = pop_comments(codesnip)
     v_dict = yaml.load('\n'.join(comments))
-    if v_dict is None:
-        continue
-    for e in codesnip.children:
-        if e.name == 'variable':
-            try:
-                e.replace(v_dict[e.string])
-            except KeyError:
-                pass
-    print(codesnip)
+    if v_dict is not None:
+        for e in codesnip.children:
+            if e.name == 'variable':
+                try:
+                    e.replace(v_dict[e.string])
+                except KeyError:
+                    pass
+    #print(' '.join([str(c).strip() for c in codesnip.contents]))
+    #cmd = [str(c).strip() for c in codesnip.contents]
+    cmd = ' '.join([str(c).strip() for c in codesnip.contents])
+    print(shlex.split(cmd))
+
+    # run in one thread:
+    try:
+        p = subprocess.Popen(cmd,
+                             stdout=subprocess.PIPE,
+                             stderr=subprocess.PIPE,
+                             shell=True)
+        out, err = p.communicate()
+        print(out.decode('utf-8'))
+    except Exception as e:
+        print(e)
+
+    # in another thread (main thread):
+    #while True:
+    #    out, err = p.communicate()
+    #
+    # to communicate with screen use
+    # * out
+    # * Xlib.disblay.Display (or even pyautogui)
 
