@@ -9,7 +9,9 @@ import TexSoup
 import TexSoup.utils
 import yaml
 
-LOGGER = logging.getLogger(__file__)
+from . import screenshot
+
+LOGGER = logging.getLogger(__name__)
 
 def find_codesnips(soup):
     return [c for c in soup.find_all('codesnip')]
@@ -76,7 +78,7 @@ def run_command(command):
     cmd0 = shlex.split(command)[0]
     while runner.is_alive():
         i += 1
-        print(i)
+        LOGGER.debug("%d, %s", i, screenshot.active_window_info())
         time.sleep(2.0)
         if i > 1:
             runner_stop_event.set()
