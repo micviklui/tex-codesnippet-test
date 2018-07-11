@@ -1,10 +1,17 @@
-import yaml
 import copy
-import subprocess
+import time
 import shlex
+import subprocess
+import threading
 
+#import pyautogui
 import TexSoup
 import TexSoup.utils
+import yaml
+
+
+#pyautogui.PAUSE = 2.5
+#pyautogui.FAILSAFE = True
 
 soup = TexSoup.TexSoup(r"""
 \begin{document}
@@ -79,13 +86,25 @@ def compile_codesnip(codesnip):
             output.append(str(t))
     return '\n'.join(output)
 
+
+def runner_thread(cmd, event):
+#def runner_thread(cmd):
+    process = subprocess.Popen(
+        cmd,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+        shell=True)
+    #while process.poll() == None or not event.is_set():
+    while process.poll() == None:
+        out, err = process.communicate()
+        print('out=', out.decode('utf-8'))
+
 #compiled = [compile_codesnip(c) for c in find_codesnips(soup)]
 
 cs = find_codesnips(soup)
 cs0 = cs[0]
 print([type(c) for c in cs0])
 print([c for c in cs0])
-
 
 for codesnip in find_codesnips(soup):
     comments = pop_comments(codesnip)
@@ -103,15 +122,34 @@ for codesnip in find_codesnips(soup):
     print(shlex.split(cmd))
 
     # run in one thread:
-    try:
-        p = subprocess.Popen(cmd,
-                             stdout=subprocess.PIPE,
-                             stderr=subprocess.PIPE,
-                             shell=True)
-        out, err = p.communicate()
-        print(out.decode('utf-8'))
-    except Exception as e:
-        print(e)
+    #try:
+    #    p = subprocess.Popen(cmd,
+    #                         stdout=subprocess.PIPE,
+    #                         stderr=subprocess.PIPE,
+    #                         shell=True)
+    #    out, err = p.communicate()
+    #    print(out.decode('utf-8'))
+    #except Exception as e:
+    #    print(e)
+
+    screenshot_name = "{}_{:03d}.png"
+    runner_stop_event = threading.Event()
+    runner = threading.Thread(target=runner_thread,
+                              args=(cmd, runner_stop_event))
+    #runner = threading.Thread(target=runner_thread,
+    #                          args=(cmd, ))
+    runner.start()
+    i = 0
+    cmd0 = shlex.split(cmd)[0]
+    while runner.is_alive():
+        #print(pyautogui.size())
+        #pyautogui.screenshot(screenshot_name.format(cmd0, i))
+        i += 1
+        time.sleep(2.0)
+        if i > 1:
+            break
+
+    #pyautogui.hotkey('command', 't')
 
     # in another thread (main thread):
     #while True:
