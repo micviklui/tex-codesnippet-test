@@ -4,14 +4,10 @@ import shlex
 import subprocess
 import threading
 
-#import pyautogui
 import TexSoup
 import TexSoup.utils
 import yaml
 
-
-#pyautogui.PAUSE = 2.5
-#pyautogui.FAILSAFE = True
 
 soup = TexSoup.TexSoup(r"""
 \begin{document}
@@ -70,10 +66,6 @@ def pop_comments(node):
     #return yaml.load('\n'.join(comments))
 
 def compile_codesnip(codesnip):
-    #comments = [e.lstrip('%') for e in c0
-    #            if (isinstance(e, TexSoup.utils.TokenWithPosition)
-    #                and e.startswith('%'))]
-    #variable_dict = yaml.load('\n'.join(comments))
     comments = pop_comments(codesnip)
     variable_dict = yaml.load('\n'.join(comments))
 
@@ -86,9 +78,7 @@ def compile_codesnip(codesnip):
             output.append(str(t))
     return '\n'.join(output)
 
-
 def runner_thread(cmd, event):
-#def runner_thread(cmd):
     process = subprocess.Popen(
         cmd,
         stdout=subprocess.PIPE,
@@ -97,65 +87,43 @@ def runner_thread(cmd, event):
     #while process.poll() == None or not event.is_set():
     while process.poll() == None:
         out, err = process.communicate()
-        print('out=', out.decode('utf-8'))
+        print(out.decode('utf-8'))
+        if event.is_set():
+            process.kill()
 
-#compiled = [compile_codesnip(c) for c in find_codesnips(soup)]
+def active_window_geometry():
+    pass
 
-cs = find_codesnips(soup)
-cs0 = cs[0]
-print([type(c) for c in cs0])
-print([c for c in cs0])
+def main():
+    for codesnip in find_codesnips(soup):
 
-for codesnip in find_codesnips(soup):
-    comments = pop_comments(codesnip)
-    v_dict = yaml.load('\n'.join(comments))
-    if v_dict is not None:
-        for e in codesnip.children:
-            if e.name == 'variable':
-                try:
-                    e.replace(v_dict[e.string])
-                except KeyError:
-                    pass
-    #print(' '.join([str(c).strip() for c in codesnip.contents]))
-    #cmd = [str(c).strip() for c in codesnip.contents]
-    cmd = ' '.join([str(c).strip() for c in codesnip.contents])
-    print(shlex.split(cmd))
+        comments = pop_comments(codesnip)
+        v_dict = yaml.load('\n'.join(comments))
+        if v_dict is not None:
+            for e in codesnip.children:
+                if e.name == 'variable':
+                    try:
+                        e.replace(v_dict[e.string])
+                    except KeyError:
+                        pass
 
-    # run in one thread:
-    #try:
-    #    p = subprocess.Popen(cmd,
-    #                         stdout=subprocess.PIPE,
-    #                         stderr=subprocess.PIPE,
-    #                         shell=True)
-    #    out, err = p.communicate()
-    #    print(out.decode('utf-8'))
-    #except Exception as e:
-    #    print(e)
+        #cmd = [str(c).strip() for c in codesnip.contents]
+        cmd = ' '.join([str(c).strip() for c in codesnip.contents])
+        print(shlex.split(cmd))
 
-    screenshot_name = "{}_{:03d}.png"
-    runner_stop_event = threading.Event()
-    runner = threading.Thread(target=runner_thread,
-                              args=(cmd, runner_stop_event))
-    #runner = threading.Thread(target=runner_thread,
-    #                          args=(cmd, ))
-    runner.start()
-    i = 0
-    cmd0 = shlex.split(cmd)[0]
-    while runner.is_alive():
-        #print(pyautogui.size())
-        #pyautogui.screenshot(screenshot_name.format(cmd0, i))
-        i += 1
-        time.sleep(2.0)
-        if i > 1:
-            break
+        screenshot_name = "{}_{:03d}.png"
+        runner_stop_event = threading.Event()
+        runner = threading.Thread(target=runner_thread,
+                                  args=(cmd, runner_stop_event))
+        runner.start()
+        i = 0
+        cmd0 = shlex.split(cmd)[0]
+        while runner.is_alive():
+            i += 1
+            print(i)
+            time.sleep(2.0)
+            if i > 1:
+                runner_stop_event.set()
 
-    #pyautogui.hotkey('command', 't')
-
-    # in another thread (main thread):
-    #while True:
-    #    out, err = p.communicate()
-    #
-    # to communicate with screen use
-    # * out
-    # * Xlib.disblay.Display (or even pyautogui)
-
+if __name__ == "__main__":
+    main()
