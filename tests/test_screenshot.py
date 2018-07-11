@@ -1,5 +1,4 @@
-import codesnip_run.runner
+import codesnip_run.screenshot
 
 def test_run_command():
-    command = 'mpl_qt'
-    codesnip_run.runner.run_command(command)
+    codesnip_run.screenshot.active_window_info()
