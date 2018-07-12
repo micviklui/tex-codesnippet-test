@@ -1,7 +1,9 @@
 import copy
 import logging
+import os
 import time
 import shlex
+import signal
 import subprocess
 import threading
 
@@ -55,23 +57,30 @@ def get_command(codesnip):
     LOGGER.debug('command tokens = %s', shlex.split(cmd))
     return cmd
 
-def runner_thread(cmd, event):
+def runner_thread(cmd, stop_event, out_queue=None):
+    #https://stackoverflow.com/questions/4789837/how-to-terminate-a-python-subprocess-launched-with-shell-true
     process = subprocess.Popen(
         cmd,
         stdout=subprocess.PIPE,
         stderr=subprocess.PIPE,
-        shell=True)
-    #while process.poll() == None or not event.is_set():
+        shell=True,
+        preexec_fn=os.setsid
+    )
+    #while process.poll() == None or not stop_event.is_set():
     while process.poll() == None:
+        LOGGER.debug('process %s', process)
         out, err = process.communicate()
-        print(out.decode('utf-8'))
-        if event.is_set():
-            process.kill()
+        LOGGER.debug(out.decode('utf-8'))
+        if stop_event.is_set():
+            #process.kill()
+            os.killpg(os.getpgid(process.pid), signal.SIGTERM)
+            LOGGER.debug('process %s', process)
 
 def run_command(command):
     screenshot_name = "{}_{:03d}.png"
     runner_stop_event = threading.Event()
-    runner = threading.Thread(target=runner_thread,
+    runner = threading.Thread(name='runner_thread',
+                              target=runner_thread,
                               args=(command, runner_stop_event))
     runner.start()
     i = 0
@@ -82,6 +91,7 @@ def run_command(command):
         time.sleep(2.0)
         if i > 1:
             runner_stop_event.set()
+            LOGGER.debug("set event %s", runner_stop_event)
 
 def main():
     import argparse

@@ -8,7 +8,6 @@ from Quartz import (
     kCGNullWindowID
 )
 
-
 LOGGER = logging.getLogger(__name__)
 
 
