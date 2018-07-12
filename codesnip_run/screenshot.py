@@ -18,6 +18,7 @@ LOGGER = logging.getLogger(__name__)
 
 
 def grab(top, left, width, height, monitor_number, output):
+    LOGGER.debug(output)
     with mss.mss() as sct:
         screen_part = {
             'top': top,

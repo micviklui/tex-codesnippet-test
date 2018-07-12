@@ -64,17 +64,39 @@ def runner_thread(cmd, stop_event, out_queue=None):
         stdout=subprocess.PIPE,
         stderr=subprocess.PIPE,
         shell=True,
-        preexec_fn=os.setsid
+        preexec_fn=os.setpgrp
     )
-    #while process.poll() == None or not stop_event.is_set():
+    LOGGER.debug('process=%s', vars(process))
+    LOGGER.debug('pgid=%s', os.getpgid(process.pid))
+
+    stdout_lines = []
     while process.poll() == None:
-        LOGGER.debug('process %s', process)
-        out, err = process.communicate()
-        LOGGER.debug(out.decode('utf-8'))
+        try:
+            stdout, stderr = process.communicate(timeout=1)
+        except subprocess.TimeoutExpired:
+            pass
+        else:
+            stdout_lines.append(stdout)
+            LOGGER.debug(stdout.decode('utf-8'))
+
         if stop_event.is_set():
-            #process.kill()
-            os.killpg(os.getpgid(process.pid), signal.SIGTERM)
-            LOGGER.debug('process %s', process)
+            active_win = screenshot.active_window_info()
+            LOGGER.debug('process=%s, active_win=%s', process.args, active_win)
+            screenshot.grab(
+                win['geometry']['Y'], win['geometry']['X'],
+                win['geometry']['Width'], win['geometry']['Height'],
+                1,
+                '{}.png'.format(process.pid))
+            LOGGER.debug('killing process=%s', process.args)
+            os.killpg(os.getpgid(process.pid), signal.SIGKILL)
+
+    process.stdout.close()
+    return_code = process.wait()
+    if return_code:
+        raise subprocess.CalledProcessError(return_code, cmd)
+    LOGGER.debug('process=%s return=%s', process.args, return_code)
+    #if out_queue:
+    #    out_queue.append(stdout_lines)
 
 def run_command(command):
     screenshot_name = "{}_{:03d}.png"
@@ -87,11 +109,12 @@ def run_command(command):
     cmd0 = shlex.split(command)[0]
     while runner.is_alive():
         i += 1
-        LOGGER.debug("%d, %s", i, screenshot.active_window_info())
-        time.sleep(2.0)
+        active_win = screenshot.active_window_info()
+        LOGGER.debug("(%d)", i)
+        #LOGGER.debug("(%d) %s %s", i, active_win['app'], active_win['title'])
+        time.sleep(1.0)
         if i > 1:
             runner_stop_event.set()
-            LOGGER.debug("set event %s", runner_stop_event)
 
 def main():
     import argparse
