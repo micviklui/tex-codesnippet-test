@@ -1,3 +1,4 @@
+#https://stackoverflow.com/questions/28815863/how-to-get-active-window-title-using-python-in-mac
 import logging
 import sys
 
@@ -29,7 +30,7 @@ def active_window_info():
         if windowTitle and (pid == active_app_pid or
                             ownerName == active_app_name):
             LOGGER.debug(
-                'ownerName=%s, windowName=%s, x=%s, y=%s, '
+                'darwin: ownerName=%s, windowName=%s, x=%s, y=%s, '
                 'width=%s, height=%s',
                 window['kCGWindowOwnerName'],
                 window.get('kCGWindowName', u'Unknown'),
@@ -37,6 +38,11 @@ def active_window_info():
                 geometry['Y'],
                 geometry['Width'],
                 geometry['Height'])
-            break
+            return {
+                'app': ownerName,
+                'geometry': geometry,
+                'title': windowTitle,
+                'name': window.get('kCGWindowName', u'Unknown'),
+            }
 
     #return _review_active_info(active_app_name, windowTitle)
